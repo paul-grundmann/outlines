@@ -1,6 +1,7 @@
 import inspect
 import json
 import re
+import warnings
 from typing import Callable, Optional
 
 from jsonschema.protocols import Validator
@@ -194,13 +195,7 @@ def to_regex(
             to_regex(resolver, t, whitespace_pattern) for t in instance["oneOf"]
         ]
 
-        xor_patterns = []
-        # json schema validation ensured there is no overlapping schemas in oneOf
-        for subregex in subregexes:
-            other_subregexes = filter(lambda r: r != subregex, subregexes)
-            other_subregexes_str = "|".join([f"{s}" for s in other_subregexes])
-            negative_lookahead = f"(?!.*({other_subregexes_str}))"
-            xor_patterns.append(f"({subregex}){negative_lookahead}")
+        xor_patterns = [f"(?:{subregex})" for subregex in subregexes]
 
         return rf"({'|'.join(xor_patterns)})"
 
@@ -375,6 +370,14 @@ def get_schema_from_signature(fn: Callable) -> str:
         else:
             arguments[name] = (arg.annotation, ...)
 
-    model = create_model("Arguments", **arguments)
+    try:
+        fn_name = fn.__name__
+    except Exception as e:
+        fn_name = "Arguments"
+        warnings.warn(
+            f"The function name could not be determined. Using default name 'Arguments' instead. For debugging, here is exact error:\n{e}",
+            category=UserWarning,
+        )
+    model = create_model(fn_name, **arguments)
 
     return model.model_json_schema()
