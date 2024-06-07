@@ -28,7 +28,7 @@ limitations under the License.
 import math
 from collections import defaultdict
 from typing import TYPE_CHECKING, DefaultDict, List, Optional, Type, Union
-gitimport torch
+import torch
 from pydantic import BaseModel
 
 from outlines.fsm.guide import RegexGuide, Write, Generate
