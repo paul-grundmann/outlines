@@ -28,8 +28,7 @@ limitations under the License.
 import math
 from collections import defaultdict
 from typing import TYPE_CHECKING, DefaultDict, List, Optional, Type, Union
-from line_profiler import profile
-import torch
+gitimport torch
 from pydantic import BaseModel
 
 from outlines.fsm.guide import RegexGuide, Write, Generate
@@ -82,7 +81,6 @@ class RegexLogitsProcessor:
         self.fsm = RegexGuide(regex_string, tokenizer)
         self._fsm_state: DefaultDict[int, int] = defaultdict(int)
 
-    @profile
     def __call__(self, input_ids: List[int], scores: torch.Tensor) -> torch.Tensor:
         """Use the FSM to bias the logits before sampling the next token.
 
