@@ -112,7 +112,7 @@ class RegexLogitsProcessor:
             state=self._fsm_state[seq_id]
         ).tokens
 
-        cache_key = hash(tuple(allowed_tokens[:2048]))
+        cache_key = hash(tuple(allowed_tokens))
         if cache_key not in self.mask_cache:
             mask = torch.full((scores.shape[-1],), -math.inf, device=scores.device)
             mask[allowed_tokens] = 0
