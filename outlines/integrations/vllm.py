@@ -28,11 +28,11 @@ limitations under the License.
 import math
 from collections import defaultdict
 from typing import TYPE_CHECKING, DefaultDict, List, Optional, Type, Union
-
+from line_profiler import profile
 import torch
 from pydantic import BaseModel
 
-from outlines.fsm.guide import RegexGuide
+from outlines.fsm.guide import RegexGuide, Write, Generate
 from outlines.fsm.json_schema import build_regex_from_schema
 from outlines.integrations.utils import adapt_tokenizer, convert_json_schema_to_str
 
@@ -82,6 +82,7 @@ class RegexLogitsProcessor:
         self.fsm = RegexGuide(regex_string, tokenizer)
         self._fsm_state: DefaultDict[int, int] = defaultdict(int)
 
+    @profile
     def __call__(self, input_ids: List[int], scores: torch.Tensor) -> torch.Tensor:
         """Use the FSM to bias the logits before sampling the next token.
 
@@ -108,17 +109,18 @@ class RegexLogitsProcessor:
                 state=self._fsm_state[last_seq_id], token_id=last_token
             )
 
-        allowed_tokens = self.fsm.get_next_instruction(
-            state=self._fsm_state[seq_id]
-        ).tokens
+        state = self._fsm_state[seq_id]
 
-        cache_key = hash(tuple(allowed_tokens))
-        if cache_key not in self.mask_cache:
+        if state in self.mask_cache:
+            mask = self.mask_cache[state]
+        else:
+            allowed_tokens = self.fsm.get_next_instruction(
+                state=self._fsm_state[seq_id]
+            ).tokens
             mask = torch.full((scores.shape[-1],), -math.inf, device=scores.device)
             mask[allowed_tokens] = 0
-            self.mask_cache[cache_key] = mask
-        else:
-            mask = self.mask_cache[cache_key]
+            self.mask_cache[state] = mask
+
         biased_scores = scores + mask
 
         return biased_scores
