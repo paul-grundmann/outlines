@@ -109,16 +109,19 @@ class RegexLogitsProcessor:
 
         state = self._fsm_state[seq_id]
 
-        if state in self.mask_cache:
-            mask = self.mask_cache[state]
-        else:
+        if state not in self.mask_cache:
+            if len(self.mask_cache) % 100 == 0:
+                print("Cache size: ", len(self.mask_cache))
             allowed_tokens = self.fsm.get_next_instruction(
                 state=self._fsm_state[seq_id]
             ).tokens
-            mask = torch.full((scores.shape[-1],), -math.inf, device=scores.device)
+            mask = torch.full((scores.shape[-1],), -math.inf, dtype=scores.dtype)
             mask[allowed_tokens] = 0
+            mask = mask.pin_memory()
             self.mask_cache[state] = mask
 
+        mask = self.mask_cache[state].to(scores.device, non_blocking=True)
+        
         biased_scores = scores + mask
 
         return biased_scores
